@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BehaviorSense AI Dashboard</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1 class="title">BehaviorSense AI</h1>
+        <p class="subtitle">Adaptive System for Academic Burnout Prediction Using Student Behavior</p>
+    </header>
+
+    <div class="dashboard-grid">
+        <!-- Input Section -->
+        <div class="col-left">
+            <div class="card">
+                <h2>📊 Student Data Input</h2>
+                <form method="POST">
+                    <div class="form-group">
+                        <label>Attendance (%)</label>
+                        <input type="number" step="0.1" min="0" max="100" name="attendance" placeholder="0 to 100" value="{{ input_data.attendance if input_data else '' }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Study Hours (per day)</label>
+                        <input type="number" step="0.1" min="0" max="24" name="study_hours" placeholder="0 to 24" value="{{ input_data.study_hours if input_data else '' }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Assignment Delay (days)</label>
+                        <input type="number" step="0.1" min="0" max="60" name="assignment_delay" placeholder="0 or more" value="{{ input_data.assignment_delay if input_data else '' }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>LMS Usage (hours)</label>
+                        <input type="number" step="0.1" min="0" max="24" name="lms_usage" placeholder="0 to 24" value="{{ input_data.lms_usage if input_data else '' }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Performance Score (/100)</label>
+                        <input type="number" step="0.1" min="0" max="100" name="performance" placeholder="0 to 100" value="{{ input_data.performance if input_data else '' }}" required>
+                    </div>
+                    <button type="submit" class="btn-primary">Analyze Student Profile</button>
+                </form>
+            </div>
+
+            <!-- Model Metrics Summary -->
+            {% if full_metrics %}
+            <div class="card">
+                <h2>📈 Model Health ({{ best_model }})</h2>
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <h3>Accuracy</h3>
+                        <p>{{ full_metrics.Accuracy }}%</p>
+                    </div>
+                    <div class="metric-card">
+                        <h3>F1 Score</h3>
+                        <p>{{ full_metrics["F1 Score"] }}%</p>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Dashboard Content -->
+        <div class="col-right">
+            {% if prediction %}
+            
+            <div class="card">
+                <div class="result-display">
+                    <h2>Prediction Result</h2>
+                    <div class="prediction-badge prediction-{{ prediction|lower }}">{{ prediction }} Risk</div>
+                    <p class="score-display">Burnout Risk Score: <span class="score-value">{{ burnout_score }}%</span></p>
+                    <p class="status-msg">{{ message }}</p>
+                    <p style="margin-top: 10px; color: #8b949e;">Student Profile: <strong>{{ student_type }}</strong></p>
+                </div>
+            </div>
+
+            <div class="chart-grid">
+                <!-- Insights -->
+                <div class="card">
+                    <h2>🔍 Behavioral Insights</h2>
+                    {% if insights %}
+                    <ul class="feature-list">
+                        {% for insight in insights %}
+                            <li>{{ insight }}</li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}
+                    <p style="color: var(--text-muted)">No critical insights detected for this student.</p>
+                    {% endif %}
+                    <div style="margin-top: 15px; padding: 10px; background: rgba(88,166,255,0.1); border-radius: 8px;">
+                        <strong>Performance Analysis:</strong> {{ performance_msg }}
+                    </div>
+                </div>
+
+                <!-- Probabilities Chart -->
+                <div class="card">
+                    <h2>🎯 Risk Probability Distribution</h2>
+                    <div class="chart-container">
+                        <canvas id="probChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recommendations & Plan -->
+            <div class="card">
+                <h2>📋 Actionable Recommendations</h2>
+                {% if recommendations %}
+                <div class="rec-grid">
+                    {% for rec in recommendations %}
+                        <div class="rec-item">{{ rec }}</div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p style="color: var(--text-muted)">Current routine is optimal.</p>
+                {% endif %}
+            </div>
+
+            {% if daily_plan %}
+            <div class="card">
+                <h2>📅 Personalized Daily Plan</h2>
+                <ul class="feature-list">
+                    {% for p in daily_plan %}
+                        <li>{{ p }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            <!-- Advanced Analytics: Explainability -->
+            <div class="chart-grid">
+                {% if shap_result and shap_result.available %}
+                <div class="card">
+                    <h2>🧠 Why did you get this score? (AI Breakdown)</h2>
+                    <ul class="feature-list">
+                        {% for f in shap_result.top_factors %}
+                            <li>{{ f }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="card">
+                <h2>📉 Historical Burnout Trend</h2>
+                <div class="chart-container">
+                    <canvas id="trendChart"></canvas>
+                </div>
+            </div>
+
+            {% else %}
+            <!-- State when no prediction has been made -->
+            <div class="card" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; text-align: center; min-height: 400px; opacity: 0.6;">
+                <h1 style="font-size: 4rem; margin-bottom: 20px;">📊</h1>
+                <h2>Awaiting Student Data</h2>
+                <p style="color: var(--text-muted);">Enter student behavioral metrics on the left to generate insights, predictions, and a personalized action plan.</p>
+            </div>
+            {% endif %}
+            
+            <!-- General System Stats (Always Visible) -->
+            <div class="chart-grid">
+                <div class="card">
+                    <h2>🤖 Algorithm Benchmark</h2>
+                    <div class="chart-container">
+                        <canvas id="accuracyChart"></canvas>
+                    </div>
+                </div>
+                <div class="card">
+                    <h2>🔑 Global Feature Importance</h2>
+                    <div class="chart-container">
+                        <canvas id="featureChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const metrics = {{ metrics | tojson | safe }};
+    const features = {{ feature_importance | tojson | safe }};
+    const probabilities = {{ probabilities | tojson | safe if probabilities else 'null' }};
+    const historyData = {{ history | tojson | safe if history else '[]' }};
+</script>
+
+<script src="/static/chart.js"></script>
+<script src="/static/trend.js"></script>
+<script>
+    // Initialize charts based on available data
+    document.addEventListener("DOMContentLoaded", () => {
+        if (typeof renderCharts === 'function') renderCharts();
+        if (typeof renderTrendChart === 'function' && historyData.length > 0) renderTrendChart(historyData);
+    });
+</script>
+
+</body>
+</html>
